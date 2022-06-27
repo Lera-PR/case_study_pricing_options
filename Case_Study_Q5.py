@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[290]:
+#I solve Q5 using the trees. To test the results of calibration I also
+# use trees to price the European call option assuming price of the asset changes by (1+vj) or (1-vj)
 
 
 import numpy as np
@@ -56,9 +54,6 @@ class Tree:
             return left_leaves+right_leaves
 
 
-# In[291]:
-
-
 def value(S,K):
     return max(S-K,0)
 
@@ -110,8 +105,6 @@ def European_pricing(N,K,V,p,r,S0):
 #At the end there will be only root left with the value of the option in it.
     return Option_Pricing_Tree.root.value
 
-
-# In[292]:
 
 
 def difference(v,Calibration_Tree,K,p,V0): #axiliary function that I use for calibration v
@@ -222,8 +215,6 @@ def check_for_calibration(option_prices,K,p,r,S0): # here just check if inputs i
     return 0
 
 
-# In[293]:
-
 
 #S_0 is the price of asset at period 0; v is the vector of asset price "multipliers".
 #p is the vector of probabilities of price moving up or down in each period. In the given model p=0.5 for each period,
@@ -232,11 +223,9 @@ def check_for_calibration(option_prices,K,p,r,S0): # here just check if inputs i
 K=1.1 #K is a strike price,
 S0=1 #S_0 is the price of asset at period 0;
 r=0.0 #interest rate is r=0, but can be another constant number >0;
-N=1 # number of periods;
+N=6 # number of periods;
 #V=np.random.uniform(0,1,N) #vector of v_j, for the price changes: S_j+1=S_j(1+v_j) or S_j+1=S_j(1-v_j)
-V=[0.1725279]
 p=[0.5]*N
-print(V)
 
 
 #will price European call option given known variables above:
@@ -246,9 +235,7 @@ if(c==0):
     print("Price of the European call option is",Price)
 else:
     print("Not correct input")
-
-N=6
-p=[0.5]*N
+    
 #here will calibrate vector of v knowing the prices of N European call options.
 option_prices=[0.036263949999999934,0.18915630500000002,0.29546952710753355,0.2973206288873305,0.4983507170698831,
                0.6455480675574639]
@@ -268,22 +255,3 @@ if(c==0):
     print("Calibrated values v are",v_vector)
 else:
     print("Not correct input")
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
