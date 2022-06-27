@@ -1,25 +1,8 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[130]:
-
-
-#question 4
-
 import numpy as np
 import math
 import timeit
 import scipy.special
 import matplotlib.pyplot as plt
-
-
-# In[ ]:
-
-
-
-
-
-# In[139]:
 
 
 def value(S,K):
@@ -128,10 +111,7 @@ def calibration_fast(K,N,V0,p,r): # Looking for the root of a monotonically incr
         
         
 
-
-# In[146]:
-
-
+#Here I test how my functions work
 v=0.3 #the value that defines movments of the asset price
 p=0.5 #probability of price of the asset moving up
 S0=1 #price of the asset at period 0
@@ -154,22 +134,3 @@ print("value of the American call option is:",V_A)
 #est_v=calibration(K,N,V_E,p,r)
 est_v=calibration_fast(K,N,V_E,p,r) #Knowing the price of European call option, number of periods, probabilities of moves
 print(est_v) #interest rate and the strike price we calibrate value v.
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
