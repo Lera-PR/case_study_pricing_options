@@ -108,8 +108,8 @@ def pricing_option(v,p,S0,N,o,K,r):
     elif o=='A': #pricing American option
         for j in range(N-1,-1,-1):
             for i in range(N-1,-1,-1):
-                S[i][j]=max((p*S[i][j+1]+(1-p)*S[i+1][j+1])/1+r,value(S[i][j],K)) ##standard discounted expectation formula, just
-                #added the comparison to max(S-K,0) for American option.
+                S[i][j]=max((p*S[i][j+1]+(1-p)*S[i+1][j+1])/(1+r),value(S[i][j],K)) ##standard discounted expectation formula, just
+                #added the comparison with max(S-K,0) for American call option.
                 
     else:
         print("Don't recognise the type of option")
