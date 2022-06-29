@@ -37,16 +37,22 @@ def F(v,N,K,V0,r):
 # If I change parameter v=0.2 and other parameters are the same, then the value of the European option is still V0=0.5.
 #Hence, if I have to calibrate v knowing that V0=0.5, K=0.5 and N=2 and r=0.0, I will not be able to give a single number, only an interval for
 #possible values of parameter v.
+#The other possible issue is that there is no such a v that would give targte V0 and no solution at all
+# Then it means that in the binary section my intervals will be very close to 1 and I have to check for it as well. Otherwise there is recurssion error.
 
 def binary_section(l,r,N,K,X,rate): #this is function for the fast calibration in Q2
+    if(l>=0.9998): #check if solution v exists in this loop
+        print("Warning! No v for such a value of the European call option is found. Solution doesn't exist")
+        return -1
+    
     m=(l+r)/2 # middle of the interval of [l,r]
     diff_l=F(l,N,K,X,rate) #find the values of the auxilary function at the ends
     diff_m=F(m,N,K,X,rate) #of the given interval and in the middle
     diff_r=F(r,N,K,X,rate)
     
-    c=rate+0.001 #Here I check if very little (r+0.001) value of v solves the calibration problem. If it does, the answer to Q2 might be not precise.
+    c=rate+0.001 #Here I check if very little (r+0.001) value of v solves the calibration problem. If it does, the answer to Q2 is not uniqie.
     if abs(diff_l)<0.00001 and l==c:
-        print("Warning! Cannot calibrate v precisely as it is too little.")
+        print("Warning! Cannot calibrate v precisely as it is too little. Solution is not uniqie")
         return -1
     
    #recursively shrink the interval until the value of the function at some end of the interval is aproximately 0 and root is detected
@@ -133,19 +139,22 @@ def pricing_option(v,p,S0,N,o,K,r):
 #It starts with a small possible value for v, which is (r+0.001) and calculate the value of a European call option with such a v as a parameter.
 #If it mathes the target price V0 of some European call options, then v is a solution to calibration problem.
 #If it doesn't match V0, then we change v slightly and check again.
-#Calibration problem doesn't always have a unique solution v, and I check 
+#Calibration problem doesn't always have a unique solution v: it might have infinite number of solutions, or no solution at all
     
 def calibration(K,N,V0,r): #looking for the proper v using brute force
     v=r+0.001 #start with very small v>r
     S=0
     while abs(S-V0)>0.00001: #check, if v gives approximation of V0 after plugged into the formula for the value of the European option
+        if(v>=0.9999): #if the candidate for solution v is approaching 1, it means there is (very likely) no solution.
+            print("Warning! No v for such a value of the European call option is found. Solution doesn't exist")
+            return -1
         S=0
         p=risk_neutral_p(r,v)
         for i in range(0,N+1):
             S=S+scipy.special.comb(N,i)*value((1+v)**i*(1-v)**(N-i),K)*p**i*(1-p)**(N-i) #here is the value of the European option with the given v.
         S=S/(1+r)**N
         v=v+0.00001
-    c=r+0.00101 #Calibration problem doesn't always have a unique solution v, and I check in this cycle, if there is potential issue. Namely,
+    c=r+0.00101 #Calibration problem doesn't always have a unique solution v, and I check in this loop, if there is potential issue. Namely,
     if v==c:# if a small number v solves the calibration problem, then there is a interval for other possible values v that will solve the problem too.
         print("Warning! Cannot calibrate v precisely as it is probably too little")
         return -1
@@ -202,13 +211,13 @@ o='A'
 V_A=pricing_option(v,p,S0,N,o,K,r) #pricing of American call option
 print("value of the American call option is:",V_A)
 
-
+#V_E =? I can either enter some number, or use the obtained one to test
 est_v=calibration(K,N,V_E,r)
 if(est_v>-1):
     print("Parameter v calibrated using brute force",est_v)
 
 est_v=calibration_fast(K,N,V_E,r) #Knowing the price of European call option, number of periods, probabilities of moves
 if(est_v>-1):
-    print("Parameter v calibrated using binary section force",est_v)
+    print("Parameter v calibrated using binary section",est_v)
 
 
