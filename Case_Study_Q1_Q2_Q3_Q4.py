@@ -52,7 +52,7 @@ def binary_section(l,r,N,K,X,rate): #this is function for the fast calibration i
     
     c=rate+0.001 #Here I check if very little (r+0.001) value of v solves the calibration problem. If it does, the answer to Q2 is not uniqie.
     if abs(diff_l)<0.00001 and l==c:
-        print("Warning! Cannot calibrate v precisely as it is too little. Solution is not uniqie")
+        print("Warning! Cannot calibrate v precisely as it is too small. Solution is not uniqie")
         return -1
     
    #recursively shrink the interval until the value of the function at some end of the interval is aproximately 0 and root is detected
@@ -156,7 +156,7 @@ def calibration(K,N,V0,r): #looking for the proper v using brute force
         v=v+0.00001
     c=r+0.00101 #Calibration problem doesn't always have a unique solution v, and I check in this loop, if there is potential issue. Namely,
     if v==c:# if a small number v solves the calibration problem, then there is a interval for other possible values v that will solve the problem too.
-        print("Warning! Cannot calibrate v precisely as it is probably too little")
+        print("Warning! Cannot calibrate v precisely as it is probably too small")
         return -1
     return v
 
