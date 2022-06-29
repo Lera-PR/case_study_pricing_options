@@ -1,13 +1,17 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[544]:
-
+#In Q5 parameters v can change from period to period and then in period k price S can take 2^k values. To properly test calibration functions
+#I also write code to price European call options when parameters v change. In addition, I allow interest rate r to be any number between 0 and 1
+#and calculate risk-neutral probabilities. These probabilities are going to be different for each period too, and it is easier to store all
+#the information in a binary tree.
 
 import numpy as np
 import math
 import timeit
 import scipy.special
+
+
+#Node will store two variables: one for a price S of an asset (or value of a European call option or anything else) and the other for probability of
+#some event. Also a node has three pointers: two for two children nodes and one for one parent node.
+#I can link nodes by using methods add_parent() and add_nodes(). And I can print two variables in the node.
 
 class Node: #nodes for Q5.
     def __init__(self,value,prob):
@@ -28,7 +32,10 @@ class Node: #nodes for Q5.
     def print_node(self):
         print("Node has ",self.value,"and probability is",self.prob)
         
-        
+
+#I also introduce class Tree. A tree is just a collection of linked nodes. The main method I use is list_of_leaves() that returns all the leaves
+#(nodes without children).
+  
 class Tree:
     def __init__(self,root):
         self.root=root
@@ -56,13 +63,23 @@ class Tree:
             return left_leaves+right_leaves
 
 
-# In[545]:
-
-
+        
+# Function value() calculates the value of the option for the given price S of the asset and strike price K
 def value(S,K):
     return max(S-K,0)
 
-#in this function I calculate the value of the European call option
+
+
+#Function European_pricing() calculates the value of the European call option. I create a Node with value of the price S=1 in period 0 and probability is 1.
+#I start a Tree with the root in this node.
+#Then for each period I obtain the list of leaves of the tree. In period k there is 2^k leaves and each leaf has a possible value of price S in it with the
+#corresponding probability. Knowing all possible values of the price S in period k I calculate all (2^(k+1)) possible values of the price S in period k+1 with
+#corresponding probabilities. By period N the Tree has all possible paths for price movements.
+#Next I calculate the values of the European call option in period N - this information is in leaves.
+#Then using the same formula as in Q1 I 'climb' the tree to the root calculating values of the option for each period and deleting leaves after using them
+#for computations.
+#The price of the European option will be in the root.
+
 def European_pricing(N,K,V,p,r,S0):
     
     #we need to make the tree for price paths
@@ -104,22 +121,29 @@ def European_pricing(N,K,V,p,r,S0):
             parent_node=node.par 
             if parent_node.down!=[]:  #calculate the value of the option at previous period for the given parental node
                 parent_node.value=(parent_node.down.prob*parent_node.down.value+parent_node.up.prob*parent_node.up.value)/(1+r)
-                parent_node.down=[] #delete the children
+                parent_node.down=[] #delete the children and all the relevant information will be in childless leaf
                 parent_node.up=[]
     
 #At the end there will be only root left with the value of the option in it.
     return Option_Pricing_Tree.root.value
 
 
-# In[546]:
 
-
+#Function risk_neutral_p() calculates the risk-neutral probability for given parameter v and interest rate r
 def risk_neutral_p(r,v):
     return 0.5+r/(2*v)
 
 
-def difference(v,Calibration_Tree,K,V0,r): #axiliary function that I use for calibration v
-    #the auxilary function is monotonicaly increasing on [0,1] with respect to v
+
+#Function difference() is used to calibrate values v. Namely, for the given value of parameter v I calculate corresponding risk neutral probability.
+#Then I obtain list of leaves of the Calibration tree that stores all the values v from the previous periods I calibrated already.
+#I can then obtain the period k, and it means there is k-1 values v_1,v_2,...,v_(k-1) are calibrated.
+#As I know v_1,...v_(k-1), I can calculate possible prices S in period k-1 and all these prices (with corresponding probabilities) are stored in the
+#leaves. Then for the given v I calculate value of the European call option, provided I know previous v_1,v_2,...,v_(k-1). And finaly I return the 
+#difference between this value and the target value of some European call option with date of maturity k. If this difference is approximately 0,
+#it means that current value v is next calibrated v_k.
+
+def difference(v,Calibration_Tree,K,V0,r):
     S=0
     p=risk_neutral_p(r,v)
     current_leaves=Calibration_Tree.list_of_leaves() #get all the possible prices in the current period
@@ -128,24 +152,39 @@ def difference(v,Calibration_Tree,K,V0,r): #axiliary function that I use for cal
         S=S+value(node.value*(1+v),K)*node.prob*p+value(node.value*(1-v),K)*node.prob*(1-p) #calculate here expected value
     return S/(1+r)**k-V0
 
+#Function binary_section() is used for calibration of v_1,v_2,v_3,...v_N. Let's assume I have calibrated v_1,v2,...,v_(k-1) already and the prices S are in
+#Calibration Tree. Then I have to find v_k knowing the value of some European call option with maturity date k. The value of this option
+#can be represented as a function of v. After that, the idea is the same as in Q2.
+
+
 def binary_section(l,r,Calibration_Tree,K,X,rate):
     m=(l+r)/2 # middle of the interval of [l,r]
     diff_l=difference(l,Calibration_Tree,K,X,rate) #find the values of the auxilary function at the ends
     diff_m=difference(m,Calibration_Tree,K,X,rate) #of the given interval and in the middle
     diff_r=difference(r,Calibration_Tree,K,X,rate)
     
-    c=rate+0.001
-    if abs(diff_l)<0.00001 and l==c:
-        print("Warning! Cannot calibrate v precisely as it is too little.")
+    c=rate+0.001 #It might be that the solution v is not uniqie (similarly to Q2). Namely, if small v (r+0.001) solves the optimisation problem, then
+    if abs(diff_l)<0.00001 and l==c: #there is infinitely many v that solve the same problem. In this case I send a warning and stop calibration.
+        print("Warning! Cannot calibrate v precisely as it is too small.")
         return -1
    #recursively shrink the interval until the value of the function at some end of the interval is aproximately 0 and root is detected
     if abs(diff_l)>0.0001 or abs(diff_r)>0.0001:
-        if diff_l*diff_m<0: #If at the left end and in the middle the values of the function have different signs, the root is
-            m=binary_section(l,m,Calibration_Tree,K,X,rate) #in the [l,m]
+        if diff_l*diff_m<0: #If at the left end and in the middle the values of the function have different signs, the root is in the (l,m)
+            m=binary_section(l,m,Calibration_Tree,K,X,rate) 
         else:
-            m=binary_section(m,r,Calibration_Tree,K,X,rate) # otherwise the root is in [m,r]
+            m=binary_section(m,r,Calibration_Tree,K,X,rate) # otherwise the root is in (m,r)
     
     return m
+
+
+
+#Function calibration() finds a unique vector  v_1,v_2,...,v_N (if such a vector exists). I create a node (S0,1) - price S of the asset at time 0 is
+#equal to 1 with probability 1. This node will be the root of calibration tree.
+#There is a vector of option prices where each option has different date of maturity. For each period k I do the following:
+#1. pick the next value of the European option with maturity k.
+#2. use brute force to find the value of the parameter v_k (similarly to Q2) knowing already calibrated v_1,v_2,..,v_(k-1).
+#3. check if the value v_k is not too small to avoid not precise and not unique solutions.
+#4. update the calibration tree by storing possible prices S in period k in the new leaves.
 
 def calibration(K,option_prices,r,S0):
     root=Node(S0,1) #S_0=1 with probability 1
@@ -169,7 +208,7 @@ def calibration(K,option_prices,r,S0):
             v=v+0.00001
         c=r+0.00101
         if v==c:
-            print("Warning! Cannot calibrate v precisely as it is probably too little")
+            print("Warning! Cannot calibrate v precisely as it is probably too small")
             return -1
     
         v_vector.append(v) # found v and keep it in the vector
@@ -189,6 +228,8 @@ def calibration(K,option_prices,r,S0):
     return v_vector
 
   
+#Function calibration_fast() uses the same ideas, as function calibration(), but instead of brute force search it uses binary section (similar to Q2).
+
 def calibration_fast(K,option_prices,S0,r):
     
     root=Node(S0,1) #S_0=1 with probability 1
@@ -222,6 +263,10 @@ def calibration_fast(K,option_prices,S0,r):
             new_node_down.add_parent(node)
     return v_vector
 
+
+#Functions check_for_pricing() and check_for_calibration() just check if parameters of the model are valid. For instance, strike price K has to be
+#positive
+
 def check_for_pricing(K,r,V,p,S0):
     if(S0<0):
         print("Error: price of the asset must be positive")
@@ -234,93 +279,62 @@ def check_for_pricing(K,r,V,p,S0):
     if(r<0) or (r>1):
         print("Error: interest rate has to be a number from (0,1)")
         return 1
-    if len(V)!=len(p):
-        print("Error: vector of v and vector of p have different sizes")
-        return 1
     for i in range(0,N):
         if(V[i]>1) or (V[i]<0) or (p[i]>1) or (p[i]<0):
             print("Error: either v or p in some period is not from (0,1)")
             return 1
     return 0
 
-def check_for_calibration(option_prices,K,p,r,S0): # here just check if inputs is correct
-    n=len(option_prices)
-    if(n!=len(p)):
-        print("Error: sizes of vectors of option prices and probabilities do not match")
-        return 1
-    
-    for i in range(0,n): #this loop is to make sure that the calibrated values are precise.
-        if p[i]>1 or p[i]<0: 
-            print("Error: probabilities have to be in (0,1)")
-            return 1
+def check_for_calibration(option_prices,K,r,S0): # here just check if inputs is correct
     if (K<0):
         print("Error: strike price must be positive")
         return 1
-    if r!=0:
-        print("Error: interest rate must be 0 for calibration")
+    if r<0 or r>1:
+        print("Error: interest rate must be in (0,1) for calibration")
         return 1
     if S0<0:
         print("Error: price of the asset has to be positive")
         return 1
-    
     return 0
 
 
-# In[570]:
+
+#Next I test how everything is working. Before calibration I want to price some European call options and to do this, I generate
+#v1,v2,...,v_N (and calculate risk-neutral probabilities).
 
 
-K=0.5 #K is a strike price,
+K=1.1 #K is a strike price,
 S0=1 #S_0 is the price of asset at period 0;
-r=0.2 #interest rate is r=0, but if we want to price European call option, it can be another number 0<r<1
-#N=10 # number of periods;
-#V=np.random.uniform(r,1,N) #vector of v_j, for the price changes: S_j+1=S_j(1+v_j) or S_j+1=S_j(1-v_j)
-#print(V)
-V=[0.59780795]
-print(V)
-N=len(V)
-p=[]
+r=0.0 #interest rate is r=0, but if we want to price European call option, it can be any number 0<r<1
+N=10 # number of periods;
+V_main=np.random.uniform(r,1,N) #vector of v_j, for the price changes: S_j+1=S_j(1+v_j) or S_j+1=S_j(1-v_j).
+#V_main has uniformly distributed v_1,v_2,...,v_N.
+p_main=[]
 for i in range(0,N):
-    p.append(0.5+r/(2*V[i])) #here we define risk-neutral probability, if r=0.0, then p=0.5.
+    p_main.append(0.5+r/(2*V_main[i])) #here I define risk-neutral probability, if r=0.0, then p=0.5.
 
+option_prices_1=[]
+option_prices_2=[]
+for i in range(0,N): #in this loop I price N European call options with different dates of maturity with parameters defined above.
+    V=V_main[:i+1]
+    p=p_main[:i+1]
+    c=check_for_pricing(K,r,V,p,S0)
+    if(c==0):
+        n=len(V)
+        Price=European_pricing(n,K,V,p,r,S0)
+        option_prices_1.append(Price)
+        option_prices_2.append(Price) #option_prices will store the prices of the European options
+        print("Price of the European call option is",Price," date of maturity is",i+1)
+    else:
+        print("Not correct input")
+        
+#Finally, I test calibration on the given option_prices
+print("Given prices for ",N," options are", option_prices_1)
 
-#will price European call option given known variables above:
-c=check_for_pricing(K,r,V,p,S0)
-if(c==0):
-    Price=European_pricing(N,K,V,p,r,S0)
-    print("Price of the European call option is",Price)
-else:
-    print("Not correct input")
-
-
-# In[572]:
-
-
-#here will calibrate vector of v knowing the prices of N European call options.
-N=10
-option_prices=[0.61045239674046,0.6708646383855166,0.7652845129241485,0.804860218326258,0.837499545944606,0.8597186202729517,
-               0.8962482476073704,0.9219968588658805,0.9392911995919495,0.9483384015302669]
-print("Given prices for ",N," options are", option_prices)
-
-v_vector=calibration(K,option_prices,r,S0)
+v_vector=calibration_fast(K,option_prices_2,S0,r)
 if v_vector!=-1:
-    print("Calibrated values v are",v_vector)
-option_prices=[0.61045239674046,0.6708646383855166,0.7652845129241485,0.804860218326258,0.837499545944606,0.8597186202729517,
-               0.8962482476073704,0.9219968588658805,0.9392911995919495,0.9483384015302669]
-v_vector=calibration_fast(K,option_prices,S0,r)
+    print("Calibrated values v are (binary section)",v_vector)
+
+v_vector=calibration(K,option_prices_1,r,S0)
 if v_vector!=-1:
-    print("Calibrated values v are",v_vector)
-#else:
-#    print("Not correct input")
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
+    print("Calibrated values v are (brute force)",v_vector)
