@@ -167,7 +167,7 @@ def binary_section(l,r,Calibration_Tree,K,X,rate):
     diff_r=difference(r,Calibration_Tree,K,X,rate)
     
     c=rate+0.001 #It might be that the solution v is not uniqie (similarly to Q2). Namely, if small v (r+0.001) solves the optimisation problem, then
-    if abs(diff_l)<0.00001 and l==c: #there is infinitely many v that solve the same problem. In this case I send a warning and stop calibration.
+    if abs(diff_l)<0.0001 and l==c: #there is infinitely many v that solve the same problem. In this case I send a warning and stop calibration.
         print("Warning! Cannot calibrate v precisely as it is too small.")
         return -1
    #recursively shrink the interval until the value of the function at some end of the interval is aproximately 0 and root is detected
@@ -280,12 +280,10 @@ def check_for_pricing(K,r,V,p,S0):
     if(K<0):
         print("Error: strike price must be positive")
         return 1
-    if(len(V)!=N) or (len(p)!=N):
-        print("Error: the size of vector V or p doesn't match the number of periods")
     if(r<0) or (r>1):
         print("Error: interest rate has to be a number from (0,1)")
         return 1
-    for i in range(0,N):
+    for i in range(0,len(V)):
         if(V[i]>1) or (V[i]<0) or (p[i]>1) or (p[i]<0):
             print("Error: either v or p in some period is not from (0,1)")
             return 1
