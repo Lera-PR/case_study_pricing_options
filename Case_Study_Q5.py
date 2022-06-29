@@ -158,6 +158,9 @@ def difference(v,Calibration_Tree,K,V0,r):
 
 
 def binary_section(l,r,Calibration_Tree,K,X,rate):
+    if(l>=0.9998): #check if solution v exists in this loop
+        print("Warning! No v for such a value of the European call option is found")
+        return -1
     m=(l+r)/2 # middle of the interval of [l,r]
     diff_l=difference(l,Calibration_Tree,K,X,rate) #find the values of the auxilary function at the ends
     diff_m=difference(m,Calibration_Tree,K,X,rate) #of the given interval and in the middle
@@ -200,6 +203,9 @@ def calibration(K,option_prices,r,S0):
         current_leaves=Calibration_Tree.list_of_leaves() #get all the possible prices in the current period
         k=math.log(len(current_leaves),2)+1
         while abs(S-X)>0.00001: #check, if v gives approximation of V0 after plugged into the formula for the value of the European option
+            if(v>=0.9999): #check if solution exists
+                print("Warning! No v for such a value of the European call option is found")
+                return -1
             S=0
             p=risk_neutral_p(r,v)
             for node in current_leaves:
@@ -207,7 +213,7 @@ def calibration(K,option_prices,r,S0):
             S=S/(1+r)**k
             v=v+0.00001
         c=r+0.00101
-        if v==c:
+        if abs(v-c)<0.0001:
             print("Warning! Cannot calibrate v precisely as it is probably too small")
             return -1
     
@@ -329,6 +335,7 @@ for i in range(0,N): #in this loop I price N European call options with differen
         print("Not correct input")
         
 #Finally, I test calibration on the given option_prices
+#can use some other vector of option prices, or the calculated one.
 print("Given prices for ",N," options are", option_prices_1)
 
 v_vector=calibration_fast(K,option_prices_2,S0,r)
